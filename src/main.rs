@@ -18,13 +18,17 @@ type RedisRx = mpsc::Receiver<String>;
 type RedisTx = mpsc::Sender<String>;
 type ClientState = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
+use std::env;
+
 use redis::AsyncCommands;
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
     env_logger::init();
 
-    let addr = "127.0.0.1:8080";
+    let addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:8081".to_string());
 
     let state = ClientState::new(Mutex::new(HashMap::new()));
 
@@ -35,7 +39,7 @@ async fn main() -> Result<(), io::Error> {
     tokio::spawn(redis_subscriber(redis.clone(), state.clone()));
     tokio::spawn(redis_publisher(redis.clone(), rx));
 
-    let try_socket = TcpListener::bind(addr).await;
+    let try_socket = TcpListener::bind(&&addr).await;
     let listener = try_socket.expect("Could not bind");
 
     info!("Listening on {}", addr);
